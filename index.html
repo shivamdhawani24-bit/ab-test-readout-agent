@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A/B Test Readout Agent — Shivam Dhawan</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --black: #080808;
+  --deep: #0e0e0e;
+  --card: #141414;
+  --border: #2a2a2a;
+  --white: #e5e5e5;
+  --dim: #999;
+  --dimmer: #555;
+  --red: #e50914;
+  --red-dim: rgba(229,9,20,0.12);
+  --ship: #46d369;
+  --kill: #e50914;
+  --run: #f5a623;
+  --mono: 'JetBrains Mono', monospace;
+  --body: 'Inter', sans-serif;
+  --display: 'Bebas Neue', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+body { background: var(--black); color: var(--white); font-family: var(--body); overflow-x: hidden; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--black); }
+::-webkit-scrollbar-thumb { background: var(--border); }
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 48px; height: 64px;
+  background: linear-gradient(180deg, rgba(8,8,8,0.98) 0%, rgba(8,8,8,0) 100%);
+}
+.nav-brand {
+  display: flex; align-items: center; gap: 14px;
+}
+.nav-logo {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--dimmer); letter-spacing: 0.1em; text-transform: uppercase;
+}
+.nav-sep { width: 1px; height: 16px; background: var(--border); }
+.nav-title {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--dim); letter-spacing: 0.06em;
+}
+.nav-links { display: flex; gap: 32px; }
+.nav-links a {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--dimmer); text-decoration: none;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  transition: color 0.15s;
+}
+.nav-links a:hover { color: var(--white); }
+
+/* ── HERO ── */
+.hero {
+  position: relative; height: 100vh; min-height: 700px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 0 48px 80px;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8,8,8,0.2) 0%, rgba(8,8,8,0.5) 50%, rgba(8,8,8,1) 100%),
+    linear-gradient(90deg, rgba(8,8,8,0.8) 0%, rgba(8,8,8,0.1) 60%);
+  z-index: 1;
+}
+
+.hero-visual {
+  position: absolute; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 70% 40%, rgba(229,9,20,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 80% at 90% 20%, rgba(70,211,105,0.04) 0%, transparent 50%);
+}
+
+/* Cinematic scan lines */
+.hero-visual::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255,255,255,0.008) 2px,
+    rgba(255,255,255,0.008) 4px
+  );
+  pointer-events: none;
+}
+
+.hero-content { position: relative; z-index: 2; max-width: 700px; }
+
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 10px;
+  color: var(--dim); letter-spacing: 0.12em; text-transform: uppercase;
+  margin-bottom: 24px;
+}
+.hero-tag::before {
+  content: '';
+  display: block; width: 20px; height: 1px;
+  background: var(--red);
+}
+
+h1 {
+  font-family: var(--display);
+  font-size: clamp(72px, 10vw, 140px);
+  line-height: 0.88; letter-spacing: 0.01em;
+  color: var(--white);
+  margin-bottom: 28px;
+}
+h1 .dim-line { color: rgba(229,229,229,0.2); }
+h1 .red-line { color: var(--red); }
+
+.hero-sub {
+  font-size: 16px; font-weight: 300;
+  color: rgba(229,229,229,0.5);
+  max-width: 500px; line-height: 1.7;
+  margin-bottom: 40px;
+}
+
+.hero-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+.btn-watch {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 12px 28px; background: var(--white); color: #000;
+  font-size: 15px; font-weight: 600; text-decoration: none;
+  border: none; cursor: pointer; transition: background 0.15s;
+  letter-spacing: -0.01em;
+}
+.btn-watch:hover { background: rgba(229,229,229,0.85); }
+
+.btn-info {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 12px 28px;
+  background: rgba(109,109,110,0.7); color: var(--white);
+  font-size: 15px; font-weight: 500; text-decoration: none;
+  border: none; cursor: pointer; transition: background 0.15s;
+}
+.btn-info:hover { background: rgba(109,109,110,0.5); }
+
+/* ── VERDICT ROW ── */
+.verdict-row {
+  display: flex; gap: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.verdict-item {
+  flex: 1; padding: 32px 40px;
+  border-right: 1px solid var(--border);
+  display: flex; align-items: center; gap: 20px;
+}
+.verdict-item:last-child { border-right: none; }
+.vi-indicator { width: 3px; height: 48px; border-radius: 1px; flex-shrink: 0; }
+.ind-ship { background: var(--ship); }
+.ind-kill { background: var(--kill); }
+.ind-run { background: var(--run); }
+.vi-body {}
+.vi-verdict {
+  font-family: var(--display); font-size: 28px; letter-spacing: 0.02em;
+  margin-bottom: 4px;
+}
+.vi-ship { color: var(--ship); }
+.vi-kill { color: var(--kill); }
+.vi-run { color: var(--run); }
+.vi-conf {
+  font-family: var(--mono); font-size: 10px;
+  color: var(--dimmer); letter-spacing: 0.08em;
+  text-transform: uppercase; margin-bottom: 10px;
+}
+.vi-bar { width: 120px; height: 2px; background: var(--border); }
+.vi-fill { height: 100%; transition: width 1s ease; }
+.vi-exp { font-size: 12px; color: var(--dimmer); margin-top: 8px; }
+
+/* ── CONTENT SECTIONS ── */
+.content { max-width: 1100px; margin: 0 auto; padding: 0 48px; }
+
+.section { padding: 80px 0; border-bottom: 1px solid var(--border); }
+.section:last-of-type { border-bottom: none; }
+
+.section-eyebrow {
+  font-family: var(--mono); font-size: 10px;
+  color: var(--red); letter-spacing: 0.15em;
+  text-transform: uppercase; margin-bottom: 40px;
+  display: flex; align-items: center; gap: 12px;
+}
+.section-eyebrow::before { content: ''; display: block; width: 24px; height: 1px; background: var(--red); }
+
+/* ── FLOW ── */
+.flow { display: grid; grid-template-columns: repeat(5, 1fr); }
+.flow-step { padding: 32px 24px; border-right: 1px solid var(--border); border-top: 1px solid var(--border); }
+.flow-step:first-child { border-left: 1px solid var(--border); }
+.flow-num { font-family: var(--mono); font-size: 9px; color: var(--dimmer); letter-spacing: 0.15em; margin-bottom: 20px; }
+.flow-icon { font-size: 20px; margin-bottom: 16px; filter: grayscale(30%); }
+.flow-title { font-size: 13px; font-weight: 600; color: var(--white); margin-bottom: 8px; }
+.flow-desc { font-size: 12px; color: var(--dimmer); line-height: 1.65; }
+
+/* ── TERMINAL ── */
+.terminal {
+  background: var(--deep); border: 1px solid var(--border);
+  margin-top: 40px; overflow: hidden;
+}
+.term-header {
+  padding: 12px 20px; background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.term-dot { width: 10px; height: 10px; border-radius: 50%; }
+.term-body { padding: 28px 32px; font-family: var(--mono); font-size: 12.5px; line-height: 2; }
+.tk { color: #a78bfa; }
+.ts { color: var(--ship); }
+.tkl { color: var(--kill); }
+.tv { color: #60a5fa; }
+.tn { color: #34d399; }
+.tc { color: var(--dimmer); font-style: italic; }
+
+/* ── CHECKS ── */
+.checks { border: 1px solid var(--border); }
+.check-header {
+  display: grid; grid-template-columns: 200px 1fr 100px;
+  padding: 12px 28px; background: var(--card);
+  border-bottom: 1px solid var(--border); gap: 20px;
+}
+.check-header span { font-family: var(--mono); font-size: 9px; color: var(--dimmer); letter-spacing: 0.12em; text-transform: uppercase; }
+.check-row {
+  display: grid; grid-template-columns: 200px 1fr 100px;
+  padding: 20px 28px; border-bottom: 1px solid rgba(42,42,42,0.5);
+  gap: 20px; align-items: center; transition: background 0.15s;
+}
+.check-row:hover { background: rgba(255,255,255,0.02); }
+.check-row:last-child { border-bottom: none; }
+.check-name { font-size: 13px; font-weight: 500; color: var(--white); }
+.check-desc { font-size: 12px; color: var(--dimmer); line-height: 1.5; }
+.check-type { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; text-align: center; padding: 4px 10px; }
+.type-stat { color: #a78bfa; border: 1px solid rgba(167,139,250,0.2); }
+.type-logic { color: #60a5fa; border: 1px solid rgba(96,165,250,0.2); }
+
+/* ── STACK ── */
+.stack { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+.stack-item { background: var(--black); padding: 36px 28px; transition: background 0.15s; }
+.stack-item:hover { background: var(--deep); }
+.stack-icon { font-size: 20px; margin-bottom: 16px; }
+.stack-name { font-size: 14px; font-weight: 600; color: var(--white); margin-bottom: 6px; }
+.stack-role { font-size: 12px; color: var(--dimmer); line-height: 1.5; }
+
+/* ── ABOUT ── */
+.about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
+.about-h {
+  font-family: var(--display); font-size: 52px;
+  line-height: 0.95; letter-spacing: 0.01em;
+  color: var(--white); margin-bottom: 20px;
+}
+.about-p { font-size: 14px; color: rgba(229,229,229,0.45); line-height: 1.85; margin-bottom: 14px; }
+.about-actions { display: flex; gap: 12px; margin-top: 28px; }
+.exp-list { display: flex; flex-direction: column; }
+.exp-item {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px;
+}
+.exp-item:first-child { border-top: 1px solid var(--border); }
+.exp-bar { width: 2px; height: 36px; flex-shrink: 0; }
+.exp-bar.red { background: var(--red); }
+.exp-bar.green { background: var(--ship); }
+.exp-co { font-size: 14px; font-weight: 600; color: var(--white); }
+.exp-role-text { font-size: 12px; color: var(--dimmer); margin-top: 3px; }
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 28px 48px;
+  display: flex; justify-content: space-between; align-items: center;
+  max-width: 100%;
+}
+footer span { font-family: var(--mono); font-size: 10px; color: var(--dimmer); letter-spacing: 0.06em; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.hero-tag { animation: fadeUp 0.5s 0.1s ease forwards; opacity: 0; }
+h1 { animation: fadeUp 0.6s 0.2s ease forwards; opacity: 0; }
+.hero-sub { animation: fadeUp 0.6s 0.3s ease forwards; opacity: 0; }
+.hero-actions { animation: fadeUp 0.6s 0.4s ease forwards; opacity: 0; }
+
+@media (max-width: 900px) {
+  nav { padding: 0 24px; }
+  .nav-links { display: none; }
+  .hero { padding: 0 24px 60px; }
+  h1 { font-size: 64px; }
+  .verdict-row { flex-direction: column; }
+  .verdict-item { border-right: none; border-bottom: 1px solid var(--border); }
+  .verdict-item:last-child { border-bottom: none; }
+  .content { padding: 0 24px; }
+  .flow { grid-template-columns: 1fr 1fr; }
+  .flow-step:first-child { border-left: none; }
+  .stack { grid-template-columns: 1fr 1fr; }
+  .about-grid { grid-template-columns: 1fr; gap: 40px; }
+  .check-header, .check-row { grid-template-columns: 1fr; }
+  .check-type { display: none; }
+  footer { flex-direction: column; gap: 10px; padding: 20px 24px; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">
+    <div class="nav-logo">Shivam Dhawan</div>
+    <div class="nav-sep"></div>
+    <div class="nav-title">Portfolio</div>
+  </div>
+  <div class="nav-links">
+    <a href="https://github.com/shivamdhawani24-bit/ab-test-readout-agent" target="_blank">GitHub</a>
+    <a href="https://github.com/shivamdhawani24-bit/fraud-triage-agent" target="_blank">Fraud Agent</a>
+    <a href="https://www.linkedin.com/in/shivam-dhawan/" target="_blank">LinkedIn</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-visual"></div>
+
+  <div class="hero-content">
+    <div class="hero-tag">Agentic AI &nbsp;·&nbsp; Experimentation &nbsp;·&nbsp; Product Analytics</div>
+    <h1>
+      A/B TEST<br>
+      <span class="dim-line">READOUT</span><br>
+      <span class="red-line">AGENT</span>
+    </h1>
+    <p class="hero-sub">
+      An agentic AI system that interprets experiment results and delivers a decisive verdict — statistical significance, guardrail evaluation, business impact, and a clear recommendation.
+    </p>
+    <div class="hero-actions">
+      <a href="https://github.com/shivamdhawani24-bit/ab-test-readout-agent" target="_blank" class="btn-watch">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        View Code
+      </a>
+      <a href="https://www.linkedin.com/in/shivam-dhawan/" target="_blank" class="btn-info">
+        LinkedIn Profile
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- VERDICT ROW -->
+<div class="verdict-row">
+  <div class="verdict-item">
+    <div class="vi-indicator ind-ship"></div>
+    <div class="vi-body">
+      <div class="vi-verdict vi-ship">SHIP</div>
+      <div class="vi-conf">95% Confidence</div>
+      <div class="vi-bar"><div class="vi-fill ind-ship" style="width:95%"></div></div>
+      <div class="vi-exp">One-Click Onboarding · +7pp lift · ~$6.3M impact</div>
+    </div>
+  </div>
+  <div class="verdict-item">
+    <div class="vi-indicator ind-kill"></div>
+    <div class="vi-body">
+      <div class="vi-verdict vi-kill">KILL</div>
+      <div class="vi-conf">88% Confidence</div>
+      <div class="vi-bar"><div class="vi-fill ind-kill" style="width:88%"></div></div>
+      <div class="vi-exp">Dashboard Redesign · Guardrail failing · Retention down</div>
+    </div>
+  </div>
+  <div class="verdict-item">
+    <div class="vi-indicator ind-run"></div>
+    <div class="vi-body">
+      <div class="vi-verdict vi-run">RUN LONGER</div>
+      <div class="vi-conf">62% Confidence</div>
+      <div class="vi-bar"><div class="vi-fill ind-run" style="width:62%"></div></div>
+      <div class="vi-exp">GTKM Flow · Low sample size · 5-day novelty risk</div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- HOW IT WORKS -->
+  <div class="section">
+    <div class="section-eyebrow">How it works</div>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-num">01 &mdash; INPUT</div>
+        <div class="flow-icon">📋</div>
+        <div class="flow-title">Experiment Data</div>
+        <div class="flow-desc">Control vs treatment — sample size, metric rates, guardrail, test duration.</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">02 &mdash; REASON</div>
+        <div class="flow-icon">🧠</div>
+        <div class="flow-title">Agent Reasons</div>
+        <div class="flow-desc">Claude reads the experiment and decides which analyses to run.</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">03 &mdash; ANALYZE</div>
+        <div class="flow-icon">📊</div>
+        <div class="flow-title">Stats Engine</div>
+        <div class="flow-desc">Agent calls stats.py — z-test, lift, MDE validation, guardrail, impact.</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">04 &mdash; FLAG</div>
+        <div class="flow-icon">🚩</div>
+        <div class="flow-title">Risk Flags</div>
+        <div class="flow-desc">Novelty effect, underpowered sample, guardrail regression detection.</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">05 &mdash; DECIDE</div>
+        <div class="flow-icon">✅</div>
+        <div class="flow-title">Verdict</div>
+        <div class="flow-desc">SHIP / KILL / RUN LONGER with confidence and plain-English reasoning.</div>
+      </div>
+    </div>
+
+    <div class="terminal">
+      <div class="term-header">
+        <div class="term-dot" style="background:#ff5f57"></div>
+        <div class="term-dot" style="background:#febc2e"></div>
+        <div class="term-dot" style="background:#28c840"></div>
+      </div>
+      <div class="term-body">
+        <span class="tc">// One-Click Onboarding — Phase 3 readout</span><br>
+        {<br>
+        &nbsp;&nbsp;<span class="tk">"verdict"</span>: <span class="ts">"SHIP"</span>,<br>
+        &nbsp;&nbsp;<span class="tk">"confidence"</span>: <span class="tn">95</span>,<br>
+        &nbsp;&nbsp;<span class="tk">"primary_finding"</span>: <span class="tv">"Activation +7pp (+13% relative) at 95% confidence"</span>,<br>
+        &nbsp;&nbsp;<span class="tk">"business_impact"</span>: <span class="tv">"~$6.3M annualized across 1.5M eligible users"</span>,<br>
+        &nbsp;&nbsp;<span class="tk">"guardrail_status"</span>: <span class="ts">"PASS"</span>,<br>
+        &nbsp;&nbsp;<span class="tk">"risk_flags"</span>: [],<br>
+        &nbsp;&nbsp;<span class="tk">"reasoning"</span>: <span class="tv">"Treatment winning clearly. Sample sufficient. Duration adequate."</span>,<br>
+        &nbsp;&nbsp;<span class="tk">"recommended_action"</span>: <span class="tv">"Ship to 100%. Monitor guardrail 7 days post-launch."</span><br>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- CHECKS -->
+  <div class="section">
+    <div class="section-eyebrow">Statistical checks performed</div>
+    <div class="checks">
+      <div class="check-header">
+        <span>Check</span><span>What it evaluates</span><span>Type</span>
+      </div>
+      <div class="check-row">
+        <div class="check-name">Significance Test</div>
+        <div class="check-desc">Two-proportion z-test — p-value, z-score, and confidence level at 90 / 95 / 99%</div>
+        <div class="check-type type-stat">Statistical</div>
+      </div>
+      <div class="check-row">
+        <div class="check-name">Lift Calculation</div>
+        <div class="check-desc">Absolute lift in percentage points and relative lift percentage between control and treatment</div>
+        <div class="check-type type-stat">Statistical</div>
+      </div>
+      <div class="check-row">
+        <div class="check-name">Sample Size</div>
+        <div class="check-desc">Minimum detectable effect validation — flags underpowered experiments before drawing conclusions</div>
+        <div class="check-type type-stat">Statistical</div>
+      </div>
+      <div class="check-row">
+        <div class="check-name">Guardrail Check</div>
+        <div class="check-desc">Secondary metric regression detection — agent will not recommend shipping if guardrail is failing</div>
+        <div class="check-type type-logic">Logic</div>
+      </div>
+      <div class="check-row">
+        <div class="check-name">Novelty Effect</div>
+        <div class="check-desc">Flags experiments under 7 days — results may not reflect steady-state user behavior</div>
+        <div class="check-type type-logic">Logic</div>
+      </div>
+      <div class="check-row">
+        <div class="check-name">Business Impact</div>
+        <div class="check-desc">Annualized revenue estimate from activation lift across the eligible user base</div>
+        <div class="check-type type-logic">Logic</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STACK -->
+  <div class="section">
+    <div class="section-eyebrow">Built with</div>
+    <div class="stack">
+      <div class="stack-item">
+        <div class="stack-icon">🤖</div>
+        <div class="stack-name">Anthropic Claude</div>
+        <div class="stack-role">Agentic reasoning engine with tool-use API</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-icon">📐</div>
+        <div class="stack-name">stats.py</div>
+        <div class="stack-role">Custom statistical engine — z-test, lift, MDE, guardrail</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-icon">🐍</div>
+        <div class="stack-name">Python</div>
+        <div class="stack-role">Agent orchestration and analysis pipeline</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-icon">⚡</div>
+        <div class="stack-name">Streamlit</div>
+        <div class="stack-role">Interactive experiment input and readout UI</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABOUT -->
+  <div class="section">
+    <div class="about-grid">
+      <div>
+        <div class="section-eyebrow">About</div>
+        <div class="about-h">BUILT BY SOMEONE WHO RAN THESE MANUALLY.</div>
+        <p class="about-p">At Intuit, I owned A/B experiment readouts for product launches across millions of QuickBooks customers — defining metrics, evaluating guardrails, and delivering go/no-go recommendations to leadership.</p>
+        <p class="about-p">That process was manual. This agent automates it — the same reasoning a senior DS applies after every experiment, now running in seconds.</p>
+        <div class="about-actions">
+          <a href="https://github.com/shivamdhawani24-bit/ab-test-readout-agent" target="_blank" class="btn-watch" style="font-size:13px; padding:11px 22px;">View on GitHub</a>
+          <a href="https://www.linkedin.com/in/shivam-dhawan/" target="_blank" class="btn-info" style="font-size:13px; padding:11px 22px;">LinkedIn</a>
+        </div>
+      </div>
+      <div class="exp-list">
+        <div class="exp-item">
+          <div class="exp-bar red"></div>
+          <div>
+            <div class="exp-co">Intuit</div>
+            <div class="exp-role-text">Senior DS Analyst — A/B Experiments, Funnel Analytics, GenAI Automation</div>
+          </div>
+        </div>
+        <div class="exp-item">
+          <div class="exp-bar red"></div>
+          <div>
+            <div class="exp-co">Chime Financial</div>
+            <div class="exp-role-text">Senior Risk Analyst — ML Analytics, Behavioral Signals, Precision/Recall</div>
+          </div>
+        </div>
+        <div class="exp-item">
+          <div class="exp-bar red"></div>
+          <div>
+            <div class="exp-co">Airbnb</div>
+            <div class="exp-role-text">Data Analyst — Product and Operations Analytics (Contract)</div>
+          </div>
+        </div>
+        <div class="exp-item">
+          <div class="exp-bar green"></div>
+          <div>
+            <div class="exp-co">UT Dallas</div>
+            <div class="exp-role-text">MS MIS STEM — Dean's Excellence Scholar · GPA 3.8</div>
+          </div>
+        </div>
+        <div class="exp-item">
+          <div class="exp-bar green"></div>
+          <div>
+            <div class="exp-co">Stanford Code in Place</div>
+            <div class="exp-role-text">Fellow — Python and Computer Science Fundamentals</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <span>A/B Test Readout Agent &nbsp;·&nbsp; Shivam Dhawan &nbsp;·&nbsp; 2026</span>
+  <span>Anthropic Claude &nbsp;·&nbsp; Python &nbsp;·&nbsp; Streamlit</span>
+</footer>
+
+</body>
+</html>
