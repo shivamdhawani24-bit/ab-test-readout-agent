@@ -1,0 +1,54 @@
+[
+  {
+    "name": "One-Click Onboarding — Phase 3",
+    "description": "Strong positive result — ship it",
+    "metric": "Activation Rate (%)",
+    "control_n": 10000,
+    "control_rate": 54.0,
+    "treatment_n": 10200,
+    "treatment_rate": 61.0,
+    "guardrail_control": 8.2,
+    "guardrail_treatment": 8.5,
+    "total_users": 1500000,
+    "duration_days": 14
+  },
+  {
+    "name": "GTKM Onboarding Flow",
+    "description": "Positive trend but small sample and short duration — run longer",
+    "metric": "Activation Rate (%)",
+    "control_n": 800,
+    "control_rate": 48.0,
+    "treatment_n": 820,
+    "treatment_rate": 51.0,
+    "guardrail_control": 6.5,
+    "guardrail_treatment": 6.8,
+    "total_users": 500000,
+    "duration_days": 5
+  },
+  {
+    "name": "Simplified Dashboard Feature",
+    "description": "Treatment hurts retention and guardrail failing — kill it",
+    "metric": "7-Day Retention Rate (%)",
+    "control_n": 15000,
+    "control_rate": 62.0,
+    "treatment_n": 14800,
+    "treatment_rate": 59.5,
+    "guardrail_control": 4.1,
+    "guardrail_treatment": 5.8,
+    "total_users": 2000000,
+    "duration_days": 21
+  },
+  {
+    "name": "Re-engagement Email Nudge",
+    "description": "Modest lift, guardrail clean, sufficient sample",
+    "metric": "30-Day Retention Rate (%)",
+    "control_n": 25000,
+    "control_rate": 38.0,
+    "treatment_n": 24800,
+    "treatment_rate": 40.5,
+    "guardrail_control": 2.1,
+    "guardrail_treatment": 2.2,
+    "total_users": 800000,
+    "duration_days": 30
+  }
+]
